@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NYC Temporal Emotional Geography</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.2/dist/threebox.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.2/dist/threebox.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1;
+            max-width: 320px;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .timeline-control {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1;
+            min-width: 500px;
+        }
+        
+        .date-display {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .date-display .date {
+            font-size: 18px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .date-display .count {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .timeline-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-bottom: 15px;
+        }
+        
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #4ECDC4;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(78, 205, 196, 0.4);
+        }
+        
+        .timeline-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #4ECDC4;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #3db8b0;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1;
+        }
+        
+        .legend h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        
+        .legend-emoji {
+            font-size: 20px;
+            margin-right: 10px;
+            width: 30px;
+        }
+        
+        .stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1;
+            min-width: 200px;
+        }
+        
+        .stats-panel h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        
+        .stat {
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #4ECDC4;
+        }
+        
+        .mapboxgl-popup-content {
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 250px;
+        }
+        
+        .popup-location {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .popup-emotion {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .popup-emotion span {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .popup-text {
+            font-size: 12px;
+            font-style: italic;
+            color: #666;
+            margin: 8px 0;
+            padding: 8px;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+        
+        .popup-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="header">
+        <h1>🗺️ NYC Emotional Geography</h1>
+        <p>Real-time emotional landscape from Reddit posts. Watch how emotions shift across time and events.</p>
+    </div>
+    
+    <div class="timeline-control">
+        <div class="date-display">
+            <span class="date" id="current-date">Loading...</span>
+            <span class="count" id="emotion-count">0 emotions detected</span>
+        </div>
+        <input type="range" class="timeline-slider" id="timeline-slider" min="0" max="0" value="0">
+        <div class="controls">
+            <button class="btn" id="play-btn">▶ Play</button>
+            <button class="btn btn-secondary" id="prev-btn">◀ Previous</button>
+            <button class="btn btn-secondary" id="next-btn">Next ▶</button>
+        </div>
+    </div>
+    
+    <div class="stats-panel">
+        <h4>Current Stats</h4>
+        <div class="stat">
+            <span>Joy:</span>
+            <span class="stat-value" id="stat-joy">0</span>
+        </div>
+        <div class="stat">
+            <span>Anxiety:</span>
+            <span class="stat-value" id="stat-anxiety">0</span>
+        </div>
+        <div class="stat">
+            <span>Peace:</span>
+            <span class="stat-value" id="stat-peace">0</span>
+        </div>
+        <div class="stat">
+            <span>Sadness:</span>
+            <span class="stat-value" id="stat-sadness">0</span>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <h4>Emotions</h4>
+        <div class="legend-item">
+            <span class="legend-emoji">😊</span>
+            <span>Joy / Happiness</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-emoji">😰</span>
+            <span>Anxiety / Stress</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-emoji">😌</span>
+            <span>Peace / Calm</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-emoji">😔</span>
+            <span>Sadness / Low</span>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        mapboxgl.accessToken = 'pk.eyJ1IjoiamF5Y2VrIiwiYSI6ImNtYzB0N2RsdzA2MXgya3IzbGM1OTg0bTMifQ.2iyCIDuQTc7gkqtgG6f3Ew';
+        
+        const EMOTION_CONFIG = {
+            joy: { emoji: '😊', color: '#FFD93D' },
+            anxiety: { emoji: '😰', color: '#FF6B6B' },
+            peace: { emoji: '😌', color: '#4ECDC4' },
+            sadness: { emoji: '😔', color: '#A8DADC' },
+            neutral: { emoji: '😐', color: '#B8B8B8' }
+        };
+        
+        // GLOBAL STATE
+        let map, tb;
+        let allData = [];
+        let dateGroups = [];
+        let currentDateIndex = 0;
+        let currentEmojis = [];
+        let isPlaying = false;
+        let playInterval;
+        
+        // INITIALIZE MAP
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-73.9851, 40.7589],
+            zoom: 11.5,
+            pitch: 50,
+            bearing: -20,
+            antialias: true
+        });
+        
+        map.addControl(new mapboxgl.NavigationControl());
+        
+        // LOAD DATA
+        async function loadData() {
+            try {
+                const response = await fetch('reddit_emotions_by_date.json');
+                const dataByDate = await response.json();
+                
+                // Convert to array and sort by date
+                dateGroups = Object.keys(dataByDate)
+                    .sort()
+                    .map(date => ({
+                        date: date,
+                        data: dataByDate[date]
+                    }));
+                
+                if (dateGroups.length === 0) {
+                    alert('No data found! Run collect_reddit_emotions.py first');
+                    return;
+                }
+                
+                // Setup timeline
+                document.getElementById('timeline-slider').max = dateGroups.length - 1;
+                
+                // Initialize threebox
+                tb = new Threebox(
+                    map,
+                    map.getCanvas().getContext('webgl'),
+                    { defaultLights: true }
+                );
+                
+                // Add custom layer
+                map.addLayer({
+                    id: 'emoji-layer',
+                    type: 'custom',
+                    renderingMode: '3d',
+                    onAdd: function() {
+                        showDate(0);
+                    },
+                    render: function() {
+                        tb.update();
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error loading data. Make sure reddit_emotions_by_date.json exists!');
+            }
+        }
+        
+        // CREATE 3D EMOJI
+        function createEmoji(item) {
+            const config = EMOTION_CONFIG[item.emotion] || EMOTION_CONFIG.neutral;
+            const scale = 15 * (item.intensity || 0.7);
+            
+            // Create sphere
+            const geometry = new THREE.SphereGeometry(scale, 32, 32);
+            const material = new THREE.MeshPhongMaterial({
+                color: config.color,
+                emissive: config.color,
+                emissiveIntensity: 0.4,
+                shininess: 100
+            });
+            
+            const sphere = new THREE.Mesh(geometry, material);
+            
+            // Wrap in threebox
+            const emoji = tb.Object3D({
+                obj: sphere,
+                units: 'meters',
+                anchor: 'center'
+            });
+            
+            emoji.setCoords([item.lng, item.lat, 0]);
+            
+            // Store data
+            emoji.userData = item;
+            
+            // Add floating animation
+            const startTime = Date.now();
+            emoji.userData.animate = () => {
+                const time = (Date.now() - startTime) * 0.001;
+                const newZ = Math.sin(time) * 10;
+                emoji.setCoords([item.lng, item.lat, newZ]);
+                emoji.set({ rotation: { x: 0, y: time * 0.5, z: 0 } });
+            };
+            
+            tb.add(emoji);
+            currentEmojis.push(emoji);
+            
+            return emoji;
+        }
+        
+        // CLEAR EMOJIS
+        function clearEmojis() {
+            currentEmojis.forEach(emoji => tb.remove(emoji));
+            currentEmojis = [];
+        }
+        
+        // SHOW DATE
+        function showDate(index) {
+            if (index < 0 || index >= dateGroups.length) return;
+            
+            currentDateIndex = index;
+            const group = dateGroups[index];
+            
+            // Clear existing
+            clearEmojis();
+            
+            // Create new emojis
+            group.data.forEach(item => {
+                createEmoji(item);
+            });
+            
+            // Update UI
+            document.getElementById('current-date').textContent = group.date;
+            document.getElementById('emotion-count').textContent = 
+                `${group.data.length} emotions detected`;
+            document.getElementById('timeline-slider').value = index;
+            
+            // Update stats
+            updateStats(group.data);
+            
+            // Add click handlers
+            addClickHandlers(group.data);
+        }
+        
+        // UPDATE STATS
+        function updateStats(data) {
+            const counts = { joy: 0, anxiety: 0, peace: 0, sadness: 0 };
+            
+            data.forEach(item => {
+                counts[item.emotion] = (counts[item.emotion] || 0) + 1;
+            });
+            
+            document.getElementById('stat-joy').textContent = counts.joy;
+            document.getElementById('stat-anxiety').textContent = counts.anxiety;
+            document.getElementById('stat-peace').textContent = counts.peace;
+            document.getElementById('stat-sadness').textContent = counts.sadness;
+        }
+        
+        // CLICK HANDLERS
+        function addClickHandlers(data) {
+            // Remove old handlers
+            map.off('click', handleMapClick);
+            
+            // Add new handler
+            map.on('click', handleMapClick);
+        }
+        
+        function handleMapClick(e) {
+            const features = map.queryRenderedFeatures(e.point);
+            
+            // Find closest emoji
+            const clickLng = e.lngLat.lng;
+            const clickLat = e.lngLat.lat;
+            
+            let closest = null;
+            let minDist = Infinity;
+            
+            currentEmojis.forEach(emoji => {
+                const data = emoji.userData;
+                const dist = Math.sqrt(
+                    Math.pow(data.lng - clickLng, 2) + 
+                    Math.pow(data.lat - clickLat, 2)
+                );
+                
+                if (dist < minDist && dist < 0.01) {  // Within ~1km
+                    minDist = dist;
+                    closest = data;
+                }
+            });
+            
+            if (closest) {
+                showPopup(closest, e.lngLat);
+            }
+        }
+        
+        // SHOW POPUP
+        function showPopup(data, lngLat) {
+            const config = EMOTION_CONFIG[data.emotion] || EMOTION_CONFIG.neutral;
+            
+            new mapboxgl.Popup()
+                .setLngLat(lngLat)
+                .setHTML(`
+                    <div class="popup-location">${data.location_name}</div>
+                    <div class="popup-emotion">
+                        <span>${config.emoji}</span>
+                        <div>
+                            <strong>${data.emotion}</strong>
+                            <div style="font-size: 11px; color: #999;">
+                                Intensity: ${(data.intensity * 100).toFixed(0)}%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="popup-text">"${data.text.substring(0, 150)}${data.text.length > 150 ? '...' : ''}"</div>
+                    <div class="popup-meta">
+                        <div>From: r/${data.subreddit}</div>
+                        <div>${new Date(data.timestamp).toLocaleString()}</div>
+                    </div>
+                `)
+                .addTo(map);
+        }
+        
+        // CONTROLS
+        document.getElementById('timeline-slider').addEventListener('input', (e) => {
+            showDate(parseInt(e.target.value));
+        });
+        
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentDateIndex > 0) {
+                showDate(currentDateIndex - 1);
+            }
+        });
+        
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentDateIndex < dateGroups.length - 1) {
+                showDate(currentDateIndex + 1);
+            }
+        });
+        
+        document.getElementById('play-btn').addEventListener('click', () => {
+            if (!isPlaying) {
+                isPlaying = true;
+                document.getElementById('play-btn').textContent = '⏸ Pause';
+                
+                playInterval = setInterval(() => {
+                    if (currentDateIndex < dateGroups.length - 1) {
+                        showDate(currentDateIndex + 1);
+                    } else {
+                        // Loop back
+                        showDate(0);
+                    }
+                }, 2000);
+            } else {
+                isPlaying = false;
+                document.getElementById('play-btn').textContent = '▶ Play';
+                clearInterval(playInterval);
+            }
+        });
+        
+        // ANIMATION LOOP
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            currentEmojis.forEach(emoji => {
+                if (emoji.userData.animate) {
+                    emoji.userData.animate();
+                }
+            });
+        }
+        
+        // START
+        map.on('load', () => {
+            loadData();
+            animate();
+        });
+    </script>
+</body>
+</html>
